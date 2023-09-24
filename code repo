@@ -1,0 +1,61 @@
+import RPi.GPIO as GPIO
+import time
+
+# GPIO pins for LiDAR and LDR sensors
+LIDAR_TRIGGER_PIN = 23  # GPIO pin for LiDAR trigger (use BCM numbering)
+LIDAR_ECHO_PIN = 24     # GPIO pin for LiDAR echo (use BCM numbering)
+LDR_PIN = 17             # GPIO pin for LDR sensor (use BCM numbering)
+LIGHT_PIN = 18           # GPIO pin for controlling the lights (use BCM numbering)
+
+# Set up GPIO mode and warnings
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+# Initialize GPIO pins
+GPIO.setup(LIDAR_TRIGGER_PIN, GPIO.OUT)
+GPIO.setup(LIDAR_ECHO_PIN, GPIO.IN)
+GPIO.setup(LDR_PIN, GPIO.IN)
+GPIO.setup(LIGHT_PIN, GPIO.OUT)
+
+# Function to measure distance using LiDAR
+def measure_distance():
+    GPIO.output(LIDAR_TRIGGER_PIN, True)
+    time.sleep(0.00001)
+    GPIO.output(LIDAR_TRIGGER_PIN, False)
+    start_time = time.time()
+    stop_time = time.time()
+
+    while GPIO.input(LIDAR_ECHO_PIN) == 0:
+        start_time = time.time()
+
+    while GPIO.input(LIDAR_ECHO_PIN) == 1:
+        stop_time = time.time()
+
+    elapsed_time = stop_time - start_time
+    distance = (elapsed_time * 34300) / 2  # Speed of sound is 343 m/s
+    return distance
+
+# Function to read light level from LDR sensor
+def read_light_level():
+    return GPIO.input(LDR_PIN)
+
+# Function to control the lights
+def control_lights(distance, light_level):
+    if distance < 100 and light_level == GPIO.LOW:
+        GPIO.output(LIGHT_PIN, GPIO.HIGH)
+    else:
+        GPIO.output(LIGHT_PIN, GPIO.LOW)
+
+try:
+    while True:
+        distance = measure_distance()
+        light_level = read_light_level()
+        control_lights(distance, light_level)
+        time.sleep(1)  # Check every 1 second
+
+except KeyboardInterrupt:
+    pass
+
+finally:
+    # Cleanup GPIO settings on program exit
+    GPIO.cleanup()
